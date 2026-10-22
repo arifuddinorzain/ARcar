@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b101f"/>
+      <stop offset="100%" stop-color="#04060a"/>
+    </linearGradient>
+    <linearGradient id="neon" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f3ff"/>
+      <stop offset="100%" stop-color="#ff0055"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  
+  <!-- App Background Tile -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+  <rect width="504" height="504" x="4" y="4" rx="106" fill="none" stroke="rgba(0, 243, 255, 0.35)" stroke-width="4"/>
+
+  <!-- Holographic Reticle Outer Ring -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="rgba(0, 243, 255, 0.2)" stroke-width="6" stroke-dasharray="16 12"/>
+  <circle cx="256" cy="256" r="140" fill="none" stroke="rgba(255, 0, 85, 0.3)" stroke-width="4"/>
+
+  <!-- Supercar Silhouette Stylized Icon -->
+  <g filter="url(#glow)">
+    <!-- Aerodynamic Chassis -->
+    <path d="M120 310 L160 250 L220 210 L300 210 L370 250 L400 310 L380 330 L130 330 Z" fill="url(#neon)"/>
+    <!-- Glass Canopy -->
+    <path d="M200 248 L235 218 L290 218 L320 248 Z" fill="#060c14" opacity="0.9"/>
+    <!-- Wheels -->
+    <circle cx="170" cy="330" r="32" fill="#141720" stroke="#00f3ff" stroke-width="6"/>
+    <circle cx="340" cy="330" r="32" fill="#141720" stroke="#00f3ff" stroke-width="6"/>
+    <circle cx="170" cy="330" r="14" fill="#00f3ff"/>
+    <circle cx="340" cy="330" r="14" fill="#00f3ff"/>
+    <!-- Racing Wing -->
+    <rect x="360" y="235" width="45" height="8" rx="3" fill="#00f3ff"/>
+    <rect x="375" y="243" width="6" height="20" fill="#00f3ff"/>
+    <!-- Headlight Beam -->
+    <polygon points="120,310 60,300 60,335 125,325" fill="#00f3ff" opacity="0.5"/>
+  </g>
+
+  <!-- Typography Brand -->
+  <text x="256" y="420" font-family="'Orbitron', sans-serif" font-size="34" font-weight="900" fill="#ffffff" letter-spacing="8" text-anchor="middle">AERO-RC</text>
+  <text x="256" y="445" font-family="sans-serif" font-size="16" font-weight="700" fill="#00f3ff" letter-spacing="4" text-anchor="middle">3D AR DRIVE</text>
+</svg>

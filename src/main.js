@@ -111,21 +111,35 @@ let frameCount = 0;
 let lastFpsUpdate = performance.now();
 
 // ==========================================================================
-// Fullscreen & Screen Orientation Management
+// Fullscreen & Screen Orientation Management (Hides Google Tabs & URL Bar)
 // ==========================================================================
 
-function toggleFullscreen() {
+async function toggleFullscreen() {
   const doc = window.document;
   const docEl = doc.documentElement;
 
   const isFs = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
 
   if (!isFs) {
-    const rfs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
-    if (rfs) {
-      rfs.call(docEl).catch(err => console.log('Fullscreen request note:', err));
+    try {
+      // navigationUI: 'hide' tells the browser to hide tabs, address bars, and navigation
+      if (docEl.requestFullscreen) {
+        await docEl.requestFullscreen({ navigationUI: 'hide' });
+      } else if (docEl.webkitRequestFullscreen) {
+        await docEl.webkitRequestFullscreen();
+      } else if (docEl.mozRequestFullScreen) {
+        await docEl.mozRequestFullScreen();
+      } else if (docEl.msRequestFullscreen) {
+        await docEl.msRequestFullscreen();
+      }
+    } catch (err) {
+      console.log('Fullscreen request note:', err);
     }
-    // Attempt landscape orientation lock on smartphones if supported
+
+    // Scroll 1px to collapse any stubborn mobile browser URL bar
+    window.scrollTo(0, 1);
+
+    // Attempt landscape orientation lock on smartphones for cockpit mode
     if (screen.orientation && screen.orientation.lock) {
       screen.orientation.lock('landscape').catch(() => {});
     }
@@ -151,6 +165,57 @@ if (btnFullscreen) {
   btnFullscreen.addEventListener('click', () => {
     sound.playClick();
     toggleFullscreen();
+  });
+}
+
+// ==========================================================================
+// PWA Standalone App Mode (Zero Browser Tabs on Phone & Desktop)
+// ==========================================================================
+
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
+
+const btnInstallApp = document.getElementById('btn-install-app');
+const installModal = document.getElementById('install-modal');
+const btnCloseInstall = document.getElementById('btn-close-install');
+const btnTriggerPwa = document.getElementById('btn-trigger-pwa-install');
+const btnForceFs = document.getElementById('btn-force-fullscreen');
+
+if (btnInstallApp) {
+  btnInstallApp.addEventListener('click', () => {
+    sound.playClick();
+    installModal.classList.remove('hidden');
+  });
+}
+
+if (btnCloseInstall) {
+  btnCloseInstall.addEventListener('click', () => installModal.classList.add('hidden'));
+}
+
+if (btnForceFs) {
+  btnForceFs.addEventListener('click', () => {
+    sound.playClick();
+    toggleFullscreen();
+    installModal.classList.add('hidden');
+  });
+}
+
+if (btnTriggerPwa) {
+  btnTriggerPwa.addEventListener('click', async () => {
+    sound.playClick();
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      const { outcome } = await deferredInstallPrompt.userChoice;
+      if (outcome === 'accepted') {
+        installModal.classList.add('hidden');
+      }
+      deferredInstallPrompt = null;
+    } else {
+      alert('To play with ZERO browser tabs:\n\n1. In Chrome/Edge: Click the (⋮) menu > "Install AERO-RC" or "Add to Home screen"\n2. In Safari: Tap Share [⬆] > "Add to Home Screen"\n\nOpening from your Home Screen launches 100% borderless!');
+    }
   });
 }
 

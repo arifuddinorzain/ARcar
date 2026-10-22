@@ -1,0 +1,21 @@
+{
+  "name": "AERO-RC // AR Car Remote Control",
+  "short_name": "AERO-RC",
+  "description": "3D Augmented Reality Car Remote Control & Cockpit",
+  "start_url": "/",
+  "id": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone", "window-controls-overlay"],
+  "orientation": "landscape",
+  "background_color": "#07090e",
+  "theme_color": "#07090e",
+  "categories": ["games", "entertainment", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

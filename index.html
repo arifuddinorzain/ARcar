@@ -13,7 +13,10 @@
   <!-- Modern Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,700&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- PWA Manifest & App Icons (Hides all browser tabs & URL bars when installed) -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icon.svg">
   
   <link rel="stylesheet" href="/src/style.css">
 </head>
@@ -128,6 +131,12 @@
         <button id="btn-hardware" class="hud-btn-pill hide-mobile-sm" title="Hardware RC Link">
           <span class="hw-icon">⚡</span>
           <span class="hw-label">BLE</span>
+        </button>
+
+        <!-- Standalone Fullscreen App Mode Button (Zero Browser Tabs) -->
+        <button id="btn-install-app" class="hud-btn-pill highlight" title="Run in Fullscreen App Mode (No Browser Tabs)">
+          <span>📱</span>
+          <span>NO TABS</span>
         </button>
       </div>
     </header>
@@ -381,6 +390,50 @@ Ready for BLE or WebSocket pairing.</pre>
       </div>
     </div>
   </div>
+
+  <!-- PWA Standalone App Mode Modal (Explains how to close all tabs and run 100% borderless) -->
+  <aside id="install-modal" class="modal-backdrop hidden">
+    <div class="modal-card glass-panel">
+      <div class="modal-header">
+        <h3 class="modal-title">BORDERLESS FULLSCREEN APP MODE</h3>
+        <button id="btn-close-install" class="btn-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Play without any Google Chrome tabs, search bars, or browser menus:</p>
+        
+        <div class="hw-options">
+          <!-- Option 1: One-tap Native Install -->
+          <div class="hw-card" id="pwa-native-card">
+            <div class="hw-card-icon">⚡</div>
+            <div class="hw-card-info">
+              <h4>Install to Home Screen (Zero Tabs)</h4>
+              <p>Launches as a standalone fullscreen game with no browser URL bar or tabs.</p>
+            </div>
+            <button id="btn-trigger-pwa-install" class="hw-action-btn">INSTALL APP</button>
+          </div>
+
+          <!-- Option 2: Browser Fullscreen Mode -->
+          <div class="hw-card">
+            <div class="hw-card-icon">🔲</div>
+            <div class="hw-card-info">
+              <h4>Force Browser Fullscreen</h4>
+              <p>Hides tabs & OS taskbars right now (`navigationUI: hide`).</p>
+            </div>
+            <button id="btn-force-fullscreen" class="hw-action-btn">GO FULLSCREEN</button>
+          </div>
+
+          <!-- Option 3: iOS iPhone Guide -->
+          <div class="hw-card">
+            <div class="hw-card-icon">🍏</div>
+            <div class="hw-card-info">
+              <h4>iPhone / iPad Users</h4>
+              <p>In Safari, tap <strong>Share [⬆]</strong> at the bottom, then select <strong>"Add to Home Screen"</strong>. Opening from your home screen removes all Safari tabs and bars permanently!</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
 
   <!-- Startup Permission / Instructions Overlay -->
   <div id="welcome-overlay" class="welcome-overlay">
