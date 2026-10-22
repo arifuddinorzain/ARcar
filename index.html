@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#080b12">
+  <meta name="description" content="AR Car Remote Control - Drive a high-performance 3D augmented reality car through your camera with futuristic HUD controls, sound effects, and BLE hardware link.">
+  <title>AERO-RC // AR Car Remote Control & Cockpit</title>
+  
+  <!-- Modern Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,700&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body class="ar-active">
+  <!-- Camera Feed Video Background -->
+  <div id="camera-viewport">
+    <video id="camera-stream" autoplay playsinline muted></video>
+    <div id="camera-overlay-grid" class="camera-grid"></div>
+    <div id="camera-fallback-env" class="fallback-env hidden">
+      <div class="virtual-horizon"></div>
+      <div class="virtual-grid-floor"></div>
+    </div>
+  </div>
+
+  <!-- 3D Three.js AR Canvas Layer -->
+  <canvas id="ar-canvas"></canvas>
+
+  <!-- AR Scan / Placement Reticle -->
+  <div id="ar-reticle" class="ar-reticle">
+    <div class="reticle-ring outer-ring"></div>
+    <div class="reticle-ring inner-ring"></div>
+    <div class="reticle-crosshair"></div>
+    <div class="reticle-label">TAP TO PLACE CAR</div>
+  </div>
+
+  <!-- HUD Interface Layer -->
+  <div id="hud-interface">
+    
+    <!-- Top Status & Utility Bar -->
+    <header class="hud-topbar">
+      <div class="hud-brand">
+        <div class="brand-badge">
+          <span class="brand-pulse"></span>
+          <span class="brand-title">AERO-RC</span>
+          <span class="brand-version">v2.4 AR</span>
+        </div>
+        <div class="tracking-pill" id="tracking-status">
+          <span class="status-dot green"></span>
+          <span class="status-text">AR TRACKING ACTIVE</span>
+        </div>
+      </div>
+
+      <!-- Quick Action Toggles -->
+      <div class="hud-quick-actions">
+        <button id="btn-camera-flip" class="hud-btn-icon" title="Switch Camera" aria-label="Switch Camera">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0-4.418-3.582-8-8-8s-8 3.582-8 8m0 4c0 4.418 3.582 8 8 8s8-3.582 8-8"/><path d="m16 6 4 4-4 4M8 18l-4-4 4-4"/></svg>
+        </button>
+        <button id="btn-recenter-car" class="hud-btn-icon" title="Recenter Car" aria-label="Recenter Car">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+        </button>
+        <button id="btn-snapshot" class="hud-btn-icon" title="Capture AR Photo" aria-label="Take AR Photo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+        </button>
+        <button id="btn-customize" class="hud-btn-icon" title="Car Customization" aria-label="Customize Car">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <button id="btn-sound-toggle" class="hud-btn-icon" title="Toggle Engine Audio" aria-label="Toggle Audio">
+          <svg id="icon-sound-on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+          <svg id="icon-sound-off" class="hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        </button>
+        <button id="btn-hardware" class="hud-btn-pill" title="Hardware RC Link">
+          <span class="hw-icon">⚡</span>
+          <span class="hw-label">BLE / WIFI</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Center HUD Telemetry Display -->
+    <div class="hud-center-telemetry">
+      <div class="telemetry-compact">
+        <div class="telemetry-row">
+          <span class="label">RPM</span>
+          <div class="bar-container">
+            <div id="rpm-bar" class="fill-bar" style="width: 15%"></div>
+          </div>
+          <span id="rpm-val" class="num-val">1200</span>
+        </div>
+        <div class="telemetry-row">
+          <span class="label">BOOST</span>
+          <div class="bar-container nitro">
+            <div id="nitro-bar" class="fill-bar nitro" style="width: 100%"></div>
+          </div>
+          <span id="nitro-val" class="num-val">READY</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Controller Surface -->
+    <main class="hud-controls-surface">
+      
+      <!-- LEFT SECTION: Steering Controls -->
+      <section class="control-zone zone-left">
+        <div class="control-card glass-panel">
+          <div class="panel-header">
+            <span class="panel-tag">STEERING</span>
+            <div class="control-mode-toggle">
+              <button id="mode-joystick" class="mode-btn active" title="Touch Joystick">STICK</button>
+              <button id="mode-wheel" class="mode-btn" title="Virtual Wheel">WHEEL</button>
+              <button id="mode-gyro" class="mode-btn" title="Device Gyro Tilt">GYRO</button>
+            </div>
+          </div>
+
+          <!-- Joystick Steering View -->
+          <div id="steering-joystick-container" class="steering-widget">
+            <div class="joystick-base" id="joystick-base">
+              <div class="joystick-guide-x"></div>
+              <div class="joystick-guide-y"></div>
+              <div class="joystick-handle" id="joystick-handle">
+                <div class="joystick-dot"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Virtual Steering Wheel View (Alternate Mode) -->
+          <div id="steering-wheel-container" class="steering-widget hidden">
+            <div class="virtual-wheel" id="virtual-wheel">
+              <div class="wheel-center">
+                <span class="wheel-logo">AR</span>
+              </div>
+              <div class="wheel-spoke left"></div>
+              <div class="wheel-spoke right"></div>
+              <div class="wheel-spoke bottom"></div>
+              <div class="wheel-marker"></div>
+            </div>
+          </div>
+
+          <!-- Gyro Indicator View (Alternate Mode) -->
+          <div id="gyro-indicator-container" class="steering-widget hidden">
+            <div class="gyro-horizon">
+              <div class="gyro-line" id="gyro-line"></div>
+              <div class="gyro-aircraft"></div>
+            </div>
+            <div class="gyro-caption">TILT DEVICE TO STEER</div>
+          </div>
+
+          <!-- Steering Quick Trim / Center -->
+          <div class="steering-footer">
+            <button id="btn-steer-left" class="btn-subtle">&lt; L</button>
+            <span id="steer-angle-display">0.0°</span>
+            <button id="btn-steer-right" class="btn-subtle">R &gt;</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- CENTER SECTION: Dynamic Speedometer & Quick Car Actions -->
+      <section class="control-zone zone-center">
+        <!-- Digital Speedometer Gauge -->
+        <div class="speedo-cluster glass-panel">
+          <svg class="speedo-svg" viewBox="0 0 200 130">
+            <defs>
+              <linearGradient id="speedo-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#00f3ff" />
+                <stop offset="60%" stop-color="#00ff88" />
+                <stop offset="90%" stop-color="#ff0055" />
+              </linearGradient>
+            </defs>
+            <!-- Background Arc -->
+            <path class="speedo-track" d="M 30 110 A 70 70 0 1 1 170 110" />
+            <!-- Dynamic Filled Arc -->
+            <path id="speedo-arc" class="speedo-progress" d="M 30 110 A 70 70 0 1 1 170 110" />
+          </svg>
+          
+          <div class="speedo-readout">
+            <div class="speed-number" id="speed-number">00</div>
+            <div class="speed-unit">KM/H</div>
+          </div>
+
+          <!-- Gear Selector Display -->
+          <div class="gear-selector">
+            <span class="gear-item active" data-gear="P">P</span>
+            <span class="gear-item" data-gear="R">R</span>
+            <span class="gear-item" data-gear="N">N</span>
+            <span class="gear-item" data-gear="D">D</span>
+            <span class="gear-item" data-gear="S">S</span>
+          </div>
+
+          <!-- Bottom Action Buttons: Horn, Headlights, Drift, Nitro -->
+          <div class="quick-toggles-row">
+            <button id="btn-headlights" class="action-btn" title="Toggle Headlights">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2m0 16v2m-8-10H2m20 0h-2m-3.5-6.5L15 7m-6 10-1.5 1.5M7 7l1.5 1.5M17 17l-1.5-1.5"/><circle cx="12" cy="12" r="4"/></svg>
+              <span>LIGHTS</span>
+            </button>
+            <button id="btn-horn" class="action-btn" title="Car Horn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+              <span>HORN</span>
+            </button>
+            <button id="btn-drift" class="action-btn danger" title="Handbrake / Drift (Hold Space)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="8"/></svg>
+              <span>DRIFT</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT SECTION: Throttle & Brake Pedals -->
+      <section class="control-zone zone-right">
+        <div class="control-card glass-panel pedals-card">
+          <div class="panel-header">
+            <span class="panel-tag">DRIVE PEDALS</span>
+            <span class="keyboard-hint">W/S or ↑/↓</span>
+          </div>
+
+          <div class="pedals-wrapper">
+            <!-- Brake / Reverse Pedal -->
+            <button id="pedal-brake" class="pedal-btn brake-pedal" aria-label="Brake or Reverse">
+              <div class="pedal-surface">
+                <div class="pedal-lines"></div>
+                <div class="pedal-label">BRAKE / REV</div>
+                <div class="pedal-sub">S / ↓</div>
+              </div>
+            </button>
+
+            <!-- Accelerator / Gas Pedal -->
+            <button id="pedal-gas" class="pedal-btn gas-pedal" aria-label="Accelerate Forward">
+              <div class="pedal-surface">
+                <div class="pedal-lines"></div>
+                <div class="pedal-label">GAS / DRIVE</div>
+                <div class="pedal-sub">W / ↑</div>
+              </div>
+            </button>
+          </div>
+
+          <!-- Nitro Boost Trigger Button -->
+          <button id="btn-nitro-boost" class="nitro-trigger-btn">
+            <div class="nitro-glow"></div>
+            <span class="nitro-icon">⚡</span>
+            <span class="nitro-text">NITRO BOOST</span>
+            <span class="nitro-key">(SHIFT)</span>
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Status Strip -->
+    <footer class="hud-bottom-strip">
+      <div class="status-metric">
+        <span class="m-label">FPS:</span>
+        <span id="fps-counter" class="m-val">60</span>
+      </div>
+      <div class="status-metric">
+        <span class="m-label">SCALE:</span>
+        <span id="car-scale-readout" class="m-val">1:10 RC</span>
+      </div>
+      <div class="status-metric">
+        <span class="m-label">DRIVE MODE:</span>
+        <span id="drive-mode-readout" class="m-val text-cyan">RWD SPORT</span>
+      </div>
+      <div class="status-metric">
+        <span class="m-label">BATTERY:</span>
+        <span id="battery-readout" class="m-val text-green">98%</span>
+      </div>
+      <div class="status-metric hide-mobile">
+        <span class="m-label">CONTROLS:</span>
+        <span class="m-val text-muted">[W/A/S/D] Drive • [SPACE] Drift • [SHIFT] Nitro • [H] Horn • [L] Lights</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Customization Drawer Modal -->
+  <aside id="customization-modal" class="modal-backdrop hidden">
+    <div class="modal-card glass-panel">
+      <div class="modal-header">
+        <h3 class="modal-title">CAR CUSTOMIZATION LAB</h3>
+        <button id="btn-close-customize" class="btn-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Paint Color Selection -->
+        <div class="config-group">
+          <label class="config-label">EXTERIOR PAINT</label>
+          <div class="color-palette" id="color-palette">
+            <button class="color-chip active" data-color="#00f3ff" style="--c: #00f3ff;" title="Cyber Cyan"></button>
+            <button class="color-chip" data-color="#ff0055" style="--c: #ff0055;" title="Neon Crimson"></button>
+            <button class="color-chip" data-color="#ffb800" style="--c: #ffb800;" title="Solar Gold"></button>
+            <button class="color-chip" data-color="#00ff88" style="--c: #00ff88;" title="Acid Green"></button>
+            <button class="color-chip" data-color="#9d00ff" style="--c: #9d00ff;" title="Ultra Violet"></button>
+            <button class="color-chip" data-color="#111116" style="--c: #1a1a24;" title="Stealth Carbon"></button>
+            <button class="color-chip" data-color="#f5f5fa" style="--c: #f5f5fa;" title="Pearl White"></button>
+          </div>
+        </div>
+
+        <!-- Neon Underglow -->
+        <div class="config-group">
+          <label class="config-label">NEON UNDERGLOW</label>
+          <div class="color-palette" id="underglow-palette">
+            <button class="color-chip active" data-underglow="#00f3ff" style="--c: #00f3ff;" title="Cyan Glow"></button>
+            <button class="color-chip" data-underglow="#ff0055" style="--c: #ff0055;" title="Hot Pink Glow"></button>
+            <button class="color-chip" data-underglow="#00ff88" style="--c: #00ff88;" title="Emerald Glow"></button>
+            <button class="color-chip" data-underglow="#9d00ff" style="--c: #9d00ff;" title="Purple Glow"></button>
+            <button class="color-chip" data-underglow="none" style="--c: #333;" title="Off">OFF</button>
+          </div>
+        </div>
+
+        <!-- Scale Adjustment -->
+        <div class="config-group">
+          <label class="config-label">AR SCALE</label>
+          <div class="scale-presets">
+            <button class="scale-btn" data-scale="0.5">1:18 Desk</button>
+            <button class="scale-btn active" data-scale="1.0">1:10 RC (Std)</button>
+            <button class="scale-btn" data-scale="2.0">1:5 Big RC</button>
+          </div>
+        </div>
+
+        <!-- Camera Filters -->
+        <div class="config-group">
+          <label class="config-label">HUD CAMERA FILTER</label>
+          <div class="filter-presets">
+            <button class="filter-btn active" data-filter="normal">Normal</button>
+            <button class="filter-btn" data-filter="night-vision">Night Vision</button>
+            <button class="filter-btn" data-filter="cyber-hud">Cyberpunk HUD</button>
+          </div>
+        </div>
+
+        <!-- Camera View Mode -->
+        <div class="config-group">
+          <label class="config-label">3D AR CAMERA TRACKING</label>
+          <div class="scale-presets">
+            <button class="cam-view-btn active" data-view="fixed-ar">Ground Locked (Real AR)</button>
+            <button class="cam-view-btn" data-view="chase">Chaser Cam (Follow Car)</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </aside>
+
+  <!-- Hardware Link Modal (Web Bluetooth & WebSocket for real RC Cars) -->
+  <aside id="hardware-modal" class="modal-backdrop hidden">
+    <div class="modal-card glass-panel">
+      <div class="modal-header">
+        <h3 class="modal-title">HARDWARE RC CAR LINK</h3>
+        <button id="btn-close-hardware" class="btn-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Connect this web dashboard directly to your physical ESP32, Arduino, or micro:bit RC car via Web Bluetooth or WiFi WebSocket.</p>
+        
+        <div class="hw-options">
+          <!-- Web Bluetooth -->
+          <div class="hw-card">
+            <div class="hw-card-icon">📶</div>
+            <div class="hw-card-info">
+              <h4>Web Bluetooth (BLE)</h4>
+              <p>Direct low-latency wireless connection to ESP32 / Arduino BLE UART.</p>
+            </div>
+            <button id="btn-ble-connect" class="hw-action-btn">CONNECT BLE</button>
+          </div>
+
+          <!-- WiFi / WebSocket -->
+          <div class="hw-card">
+            <div class="hw-card-icon">🌐</div>
+            <div class="hw-card-info">
+              <h4>WebSocket / ESP-CAM</h4>
+              <p>Connect over WiFi IP address to control network RC cars.</p>
+              <input type="text" id="ws-url-input" class="hw-input" placeholder="ws://192.168.4.1:81" value="ws://192.168.4.1:81">
+            </div>
+            <button id="btn-ws-connect" class="hw-action-btn">CONNECT WS</button>
+          </div>
+        </div>
+
+        <!-- Live Telemetry Monitor Output -->
+        <div class="hw-terminal">
+          <div class="terminal-title">SERIAL TELEMETRY OUT (9600 BAUD)</div>
+          <pre id="hw-telemetry-log">STATUS: Standalone 3D AR Simulator mode active.
+Ready for BLE or WebSocket pairing.</pre>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Photo Snapshot Preview Modal -->
+  <div id="snapshot-preview-modal" class="modal-backdrop hidden">
+    <div class="modal-card glass-panel photo-card">
+      <div class="modal-header">
+        <h3 class="modal-title">AR SNAPSHOT CAPTURED</h3>
+        <button id="btn-close-snapshot" class="btn-close">&times;</button>
+      </div>
+      <div class="photo-container">
+        <img id="snapshot-img" alt="Captured AR Car">
+      </div>
+      <div class="photo-actions">
+        <a id="btn-download-photo" class="action-btn success" download="ar-car-snapshot.png">DOWNLOAD PHOTO</a>
+        <button id="btn-retake-photo" class="action-btn">RETAKE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Startup Permission / Instructions Overlay -->
+  <div id="welcome-overlay" class="welcome-overlay">
+    <div class="welcome-box glass-panel">
+      <div class="welcome-glow"></div>
+      <div class="welcome-icon">🏎️</div>
+      <h1 class="welcome-title">AR CAR REMOTE CONTROL</h1>
+      <p class="welcome-tagline">3D Augmented Reality RC Driving & Telemetry Cockpit</p>
+      
+      <div class="welcome-features">
+        <div class="feature-item">
+          <span class="f-icon">📹</span>
+          <span>Augmented Reality Camera view with real-time ground placement</span>
+        </div>
+        <div class="feature-item">
+          <span class="f-icon">🕹️</span>
+          <span>Virtual Joystick, Pedals, Gyro tilt, Keyboard & Gamepad support</span>
+        </div>
+        <div class="feature-item">
+          <span class="f-icon">🔊</span>
+          <span>Synthesized dynamic engine sound, drift screech, horn & nitro</span>
+        </div>
+        <div class="feature-item">
+          <span class="f-icon">⚡</span>
+          <span>Web Bluetooth & WebSocket IoT link for physical RC cars</span>
+        </div>
+      </div>
+
+      <button id="btn-start-ar" class="btn-start-primary">
+        <span>INITIALIZE CAMERA & CONTROLLER</span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <div class="welcome-note">Requires camera access to project the 3D car into your room. If camera is unavailable, virtual AR environment will launch automatically.</div>
+    </div>
+  </div>
+
+  <!-- Main JavaScript App Entry -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
