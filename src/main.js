@@ -1,7 +1,7 @@
 /**
  * AERO-RC // Master Application Orchestrator
  * Integrates Camera, Three.js AR Scene, Vehicle Physics, Web Audio Synthesizer,
- * UI Cockpit HUD, and Hardware IoT Bridge.
+ * UI Cockpit HUD, Fullscreen Controls, and Hardware IoT Bridge.
  */
 
 import { sound } from './sound.js';
@@ -20,6 +20,12 @@ const reticleEl = document.getElementById('ar-reticle');
 const btnStartAr = document.getElementById('btn-start-ar');
 const welcomeOverlay = document.getElementById('welcome-overlay');
 const trackingStatusEl = document.getElementById('tracking-status');
+const btnFullscreen = document.getElementById('btn-fullscreen');
+const iconFsEnter = document.getElementById('icon-fs-enter');
+const iconFsExit = document.getElementById('icon-fs-exit');
+const btnToggleHud = document.getElementById('btn-toggle-hud');
+const iconEyeOpen = document.getElementById('icon-eye-open');
+const iconEyeClosed = document.getElementById('icon-eye-closed');
 const btnCameraFlip = document.getElementById('btn-camera-flip');
 const btnRecenterCar = document.getElementById('btn-recenter-car');
 const btnSnapshot = document.getElementById('btn-snapshot');
@@ -31,11 +37,8 @@ const btnHardware = document.getElementById('btn-hardware');
 
 // HUD Telemetry Elements
 const rpmBar = document.getElementById('rpm-bar');
-const rpmVal = document.getElementById('rpm-val');
 const nitroBar = document.getElementById('nitro-bar');
-const nitroVal = document.getElementById('nitro-val');
 const speedNumber = document.getElementById('speed-number');
-const speedoArc = document.getElementById('speedo-arc');
 const gearItems = document.querySelectorAll('.gear-item');
 const steerAngleDisplay = document.getElementById('steer-angle-display');
 const fpsCounter = document.getElementById('fps-counter');
@@ -96,13 +99,70 @@ const keyboardState = {
   shift: false
 };
 
-let currentSteerMode = 'joystick'; // 'joystick', 'wheel', 'gyro'
+let currentSteerMode = 'joystick';
 let isAppStarted = false;
+let isCleanView = false;
 
 // FPS tracking
-let lastFrameTime = performance.now();
 let frameCount = 0;
 let lastFpsUpdate = performance.now();
+
+// ==========================================================================
+// Fullscreen & Screen Orientation Management
+// ==========================================================================
+
+function toggleFullscreen() {
+  const doc = window.document;
+  const docEl = doc.documentElement;
+
+  const isFs = !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+
+  if (!isFs) {
+    const rfs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+    if (rfs) {
+      rfs.call(docEl).catch(err => console.log('Fullscreen request note:', err));
+    }
+    // Attempt landscape orientation lock on smartphones if supported
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(() => {});
+    }
+  } else {
+    const cfs = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+    if (cfs) {
+      cfs.call(doc).catch(err => console.log('Exit fullscreen note:', err));
+    }
+  }
+}
+
+function updateFullscreenUI() {
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+  if (iconFsEnter && iconFsExit) {
+    iconFsEnter.classList.toggle('hidden', isFs);
+    iconFsExit.classList.toggle('hidden', !isFs);
+  }
+}
+
+document.addEventListener('fullscreenchange', updateFullscreenUI);
+document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
+if (btnFullscreen) {
+  btnFullscreen.addEventListener('click', () => {
+    sound.playClick();
+    toggleFullscreen();
+  });
+}
+
+// Clean View Toggle (Hides secondary chrome so you can see your room & car 100% unobstructed)
+if (btnToggleHud) {
+  btnToggleHud.addEventListener('click', () => {
+    sound.playClick();
+    isCleanView = !isCleanView;
+    document.body.classList.toggle('minimal-hud', isCleanView);
+    if (iconEyeOpen && iconEyeClosed) {
+      iconEyeOpen.classList.toggle('hidden', isCleanView);
+      iconEyeClosed.classList.toggle('hidden', !isCleanView);
+    }
+  });
+}
 
 // ==========================================================================
 // Initialization & Camera Startup
@@ -113,16 +173,19 @@ btnStartAr.addEventListener('click', async () => {
   sound.init();
   sound.resume();
 
+  // Try auto fullscreen on mobile launch for best immersion
+  toggleFullscreen();
+
   const cameraStarted = await cameraManager.startCamera();
   if (cameraStarted) {
     trackingStatusEl.innerHTML = `
       <span class="status-dot green"></span>
-      <span class="status-text">AR CAMERA ACTIVE</span>
+      <span class="status-text">AR ACTIVE</span>
     `;
   } else {
     trackingStatusEl.innerHTML = `
       <span class="status-dot amber"></span>
-      <span class="status-text">VIRTUAL AR ACTIVE</span>
+      <span class="status-text">VIRTUAL AR</span>
     `;
   }
 
@@ -170,10 +233,12 @@ btnCustomize.addEventListener('click', () => {
 btnCloseCustomize.addEventListener('click', () => customModal.classList.add('hidden'));
 
 // Hardware Modal
-btnHardware.addEventListener('click', () => {
-  sound.playClick();
-  hardwareModal.classList.remove('hidden');
-});
+if (btnHardware) {
+  btnHardware.addEventListener('click', () => {
+    sound.playClick();
+    hardwareModal.classList.remove('hidden');
+  });
+}
 btnCloseHardware.addEventListener('click', () => hardwareModal.classList.add('hidden'));
 
 btnBleConnect.addEventListener('click', async () => {
@@ -188,12 +253,12 @@ btnWsConnect.addEventListener('click', () => {
 });
 
 // ==========================================================================
-// Customization Handlers (Paint, Underglow, Scale, Filters)
+// Customization Handlers (Paint, Underglow, Scale, Filters, Camera View)
 // ==========================================================================
 
 // Paint Color
 document.querySelectorAll('#color-palette .color-chip').forEach(chip => {
-  chip.addEventListener('click', (e) => {
+  chip.addEventListener('click', () => {
     document.querySelectorAll('#color-palette .color-chip').forEach(c => c.classList.remove('active'));
     chip.classList.add('active');
     const color = chip.dataset.color;
@@ -308,7 +373,7 @@ btnNitroBoost.addEventListener('pointerdown', (e) => {
 window.addEventListener('pointerup', stopNitro);
 
 // ==========================================================================
-// Pedals (Gas & Brake/Reverse)
+// Pedals (Gas & Brake/Reverse) - Multi-touch Friendly
 // ==========================================================================
 
 pedalGas.addEventListener('pointerdown', (e) => {
@@ -336,15 +401,23 @@ window.addEventListener('pointerup', () => {
 });
 
 // ==========================================================================
-// Touch Joystick Steering Implementation
+// Touch Joystick Steering - Multi-Touch Pointer Capture
 // ==========================================================================
 
 let joystickActive = false;
+let joystickPointerId = null;
 let joystickCenter = { x: 0, y: 0 };
-const maxJoystickRadius = 46;
+const maxJoystickRadius = 45;
 
 const onJoystickStart = (e) => {
+  e.preventDefault();
   joystickActive = true;
+  joystickPointerId = e.pointerId;
+
+  if (joystickBase.setPointerCapture) {
+    joystickBase.setPointerCapture(e.pointerId);
+  }
+
   const rect = joystickBase.getBoundingClientRect();
   joystickCenter = {
     x: rect.left + rect.width / 2,
@@ -354,7 +427,7 @@ const onJoystickStart = (e) => {
 };
 
 const onJoystickMove = (e) => {
-  if (!joystickActive) return;
+  if (!joystickActive || (joystickPointerId !== null && e.pointerId !== joystickPointerId)) return;
 
   const clientX = e.clientX || (e.touches && e.touches[0].clientX);
   const clientY = e.clientY || (e.touches && e.touches[0].clientY);
@@ -377,9 +450,15 @@ const onJoystickMove = (e) => {
   updateSteerReadout(physics.currentSteerAngle);
 };
 
-const onJoystickEnd = () => {
-  if (!joystickActive) return;
+const onJoystickEnd = (e) => {
+  if (!joystickActive || (joystickPointerId !== null && e.pointerId !== joystickPointerId)) return;
   joystickActive = false;
+  joystickPointerId = null;
+
+  if (joystickBase.releasePointerCapture && e.pointerId) {
+    try { joystickBase.releasePointerCapture(e.pointerId); } catch (err) {}
+  }
+
   joystickHandle.style.transform = 'translate(0px, 0px)';
   if (!keyboardState.a && !keyboardState.d) {
     physics.steerInput = 0;
@@ -391,14 +470,6 @@ window.addEventListener('pointermove', onJoystickMove);
 window.addEventListener('pointerup', onJoystickEnd);
 window.addEventListener('pointercancel', onJoystickEnd);
 
-// Trim / Steer buttons
-document.getElementById('btn-steer-left').addEventListener('click', () => {
-  physics.steerInput = Math.max(-1, physics.steerInput - 0.25);
-});
-document.getElementById('btn-steer-right').addEventListener('click', () => {
-  physics.steerInput = Math.min(1, physics.steerInput + 0.25);
-});
-
 // ==========================================================================
 // Virtual Steering Wheel Implementation
 // ==========================================================================
@@ -407,6 +478,7 @@ let wheelActive = false;
 let wheelCenter = { x: 0, y: 0 };
 
 const onWheelStart = (e) => {
+  e.preventDefault();
   wheelActive = true;
   const rect = virtualWheel.getBoundingClientRect();
   wheelCenter = {
@@ -422,7 +494,7 @@ const onWheelMove = (e) => {
   const clientY = e.clientY || (e.touches && e.touches[0].clientY);
 
   const angleRad = Math.atan2(clientX - wheelCenter.x, -(clientY - wheelCenter.y));
-  const maxWheelTurn = Math.PI * 0.7; // ~126 degrees max turn
+  const maxWheelTurn = Math.PI * 0.7;
   const clampedAngle = Math.max(-maxWheelTurn, Math.min(maxWheelTurn, angleRad));
 
   virtualWheel.style.transform = `rotate(${clampedAngle * (180 / Math.PI)}deg)`;
@@ -448,9 +520,8 @@ window.addEventListener('pointerup', onWheelEnd);
 
 const handleOrientation = (e) => {
   if (currentSteerMode !== 'gyro') return;
-  // Gamma is left-to-right tilt in degrees (-90 to 90)
   const gamma = e.gamma || 0;
-  const maxTilt = 30; // 30 degrees for full steer
+  const maxTilt = 28;
   const steerNorm = Math.max(-1, Math.min(1, gamma / maxTilt));
   physics.steerInput = steerNorm;
 
@@ -459,11 +530,9 @@ const handleOrientation = (e) => {
   }
 };
 
-// Mode Switchers
 modeJoystickBtn.addEventListener('click', () => switchSteerMode('joystick'));
 modeWheelBtn.addEventListener('click', () => switchSteerMode('wheel'));
 modeGyroBtn.addEventListener('click', async () => {
-  // Request iOS permission if needed
   if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
     try {
       const perm = await DeviceOrientationEvent.requestPermission();
@@ -491,6 +560,7 @@ function switchSteerMode(mode) {
 }
 
 function updateSteerReadout(radians) {
+  if (!steerAngleDisplay) return;
   const degrees = (radians * (180 / Math.PI)).toFixed(1);
   steerAngleDisplay.textContent = `${degrees > 0 ? '+' : ''}${degrees}°`;
 }
@@ -592,7 +662,7 @@ window.addEventListener('keyup', (e) => {
 });
 
 // ==========================================================================
-// Gamepad API Support (Plug & Play Xbox / PlayStation Controllers)
+// Gamepad API Support (Xbox / PlayStation Controllers)
 // ==========================================================================
 
 function pollGamepad() {
@@ -600,14 +670,11 @@ function pollGamepad() {
   const gp = gamepads[0];
   if (!gp) return;
 
-  // Axis 0 = Left Stick Horizontal
   if (Math.abs(gp.axes[0]) > 0.15) {
     physics.steerInput = gp.axes[0];
   }
 
-  // Right Trigger (buttons[7]) or A button (buttons[0]) = Gas
   const gasVal = (gp.buttons[7] ? gp.buttons[7].value : 0) || (gp.buttons[0] && gp.buttons[0].pressed ? 1 : 0);
-  // Left Trigger (buttons[6]) or B button (buttons[1]) = Brake/Reverse
   const brakeVal = (gp.buttons[6] ? gp.buttons[6].value : 0) || (gp.buttons[1] && gp.buttons[1].pressed ? 1 : 0);
 
   if (gasVal > 0.1) {
@@ -621,12 +688,10 @@ function pollGamepad() {
     pedalBrake.classList.remove('pressed');
   }
 
-  // X button (buttons[2]) = Handbrake / Drift
   if (gp.buttons[2] && gp.buttons[2].pressed) {
     startDrift();
   }
 
-  // Right Bumper (buttons[5]) = Nitro
   if (gp.buttons[5] && gp.buttons[5].pressed) {
     startNitro();
   }
@@ -637,8 +702,7 @@ function pollGamepad() {
 // ==========================================================================
 
 arCanvasEl.addEventListener('click', (e) => {
-  // Prevent click when dragging controls
-  if (e.target.closest('#hud-interface button') || e.target.closest('.control-card')) return;
+  if (e.target.closest('#hud-interface button') || e.target.closest('.thumb-cluster') || e.target.closest('.hud-topbar')) return;
 
   const placed = arScene.placeCarAtScreenCoords(e.clientX, e.clientY, physics);
   if (placed) {
@@ -659,7 +723,6 @@ function animate(currentTime) {
   const dt = Math.min((currentTime - lastTickTime) / 1000, 0.1);
   lastTickTime = currentTime;
 
-  // Poll Gamepad input
   pollGamepad();
 
   // 1. Physics Engine Update
@@ -687,7 +750,7 @@ function animate(currentTime) {
   frameCount++;
   if (currentTime - lastFpsUpdate >= 1000) {
     const fps = Math.round((frameCount * 1000) / (currentTime - lastFpsUpdate));
-    fpsCounter.textContent = fps;
+    if (fpsCounter) fpsCounter.textContent = fps;
     frameCount = 0;
     lastFpsUpdate = currentTime;
   }
@@ -696,21 +759,18 @@ function animate(currentTime) {
 function updateHUD(phys) {
   // Speedometer (KM/H)
   const displaySpeed = Math.round(phys.speedKmh);
-  speedNumber.textContent = displaySpeed.toString().padStart(2, '0');
+  if (speedNumber) speedNumber.textContent = displaySpeed.toString().padStart(2, '0');
 
-  // SVG Speedo Arc: max 140 km/h maps to 270 offset range
-  const maxArc = 270;
-  const progressRatio = Math.min(1, displaySpeed / 130);
-  speedoArc.style.strokeDashoffset = maxArc - (progressRatio * maxArc);
+  // RPM Mini Bar
+  if (rpmBar) {
+    const rpmPercent = Math.min(100, Math.max(0, ((phys.rpm - 1000) / 7200) * 100));
+    rpmBar.style.width = `${rpmPercent}%`;
+  }
 
-  // RPM Bar
-  const rpmPercent = Math.min(100, Math.max(0, ((phys.rpm - 1000) / 7200) * 100));
-  rpmBar.style.width = `${rpmPercent}%`;
-  rpmVal.textContent = Math.round(phys.rpm);
-
-  // Nitro Bar
-  nitroBar.style.width = `${phys.nitroEnergy}%`;
-  nitroVal.textContent = phys.nitroEnergy > 10 ? (phys.nitroActive ? 'BOOSTING' : 'READY') : 'CHARGING';
+  // Nitro Mini Bar
+  if (nitroBar) {
+    nitroBar.style.width = `${phys.nitroEnergy}%`;
+  }
 
   // Gear Indicator
   gearItems.forEach(item => {
