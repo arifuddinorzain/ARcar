@@ -15,6 +15,9 @@ const videoEl = document.getElementById('camera-stream');
 const fallbackEnvEl = document.getElementById('camera-fallback-env');
 const arCanvasEl = document.getElementById('ar-canvas');
 const reticleEl = document.getElementById('ar-reticle');
+const radarPill = document.getElementById('ar-radar-pill');
+const radarArrow = document.getElementById('radar-arrow');
+const radarText = document.getElementById('radar-text');
 
 // Top Bar Elements
 const btnStartAr = document.getElementById('btn-start-ar');
@@ -173,6 +176,18 @@ btnStartAr.addEventListener('click', async () => {
   sound.init();
   sound.resume();
 
+  // Request iOS 13+ DeviceOrientation permission for true 360° gyro AR
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const perm = await DeviceOrientationEvent.requestPermission();
+      if (perm === 'granted') {
+        arScene.calibrateAnchor();
+      }
+    } catch (e) {
+      console.warn('DeviceOrientation permission notice:', e);
+    }
+  }
+
   // Try auto fullscreen on mobile launch for best immersion
   toggleFullscreen();
 
@@ -180,17 +195,43 @@ btnStartAr.addEventListener('click', async () => {
   if (cameraStarted) {
     trackingStatusEl.innerHTML = `
       <span class="status-dot green"></span>
-      <span class="status-text">AR ACTIVE</span>
+      <span class="status-text">360° AR ACTIVE</span>
     `;
   } else {
     trackingStatusEl.innerHTML = `
       <span class="status-dot amber"></span>
-      <span class="status-text">VIRTUAL AR</span>
+      <span class="status-text">360° VIRTUAL</span>
     `;
   }
 
   isAppStarted = true;
+  arScene.calibrateAnchor();
 });
+
+// 360° Off-Screen Radar Locator (Points to car when you turn your camera away)
+arScene.onCarRadarUpdate = ({ isVisible, angleDeg, screenX, screenY, distanceMeters }) => {
+  if (!radarPill) return;
+  if (isVisible || !isAppStarted) {
+    radarPill.classList.add('hidden');
+  } else {
+    radarPill.classList.remove('hidden');
+
+    // Clamp indicator inside screen edges
+    const pad = 65;
+    const clampedX = Math.max(pad, Math.min(window.innerWidth - pad, screenX));
+    const clampedY = Math.max(pad + 20, Math.min(window.innerHeight - pad - 60, screenY));
+
+    radarPill.style.left = `${clampedX}px`;
+    radarPill.style.top = `${clampedY}px`;
+
+    if (radarArrow) {
+      radarArrow.style.transform = `rotate(${angleDeg}deg)`;
+    }
+    if (radarText) {
+      radarText.textContent = `AR CAR • ${distanceMeters}m`;
+    }
+  }
+};
 
 // Sound Toggle
 btnSoundToggle.addEventListener('click', () => {
@@ -205,10 +246,11 @@ btnCameraFlip.addEventListener('click', async () => {
   await cameraManager.flipCamera();
 });
 
-// Recenter Car
+// Recenter & Calibrate 360° AR Anchor directly in front of camera
 btnRecenterCar.addEventListener('click', () => {
   sound.playClick();
   physics.resetPosition(0, 0, 0);
+  arScene.calibrateAnchor();
   reticleEl.classList.remove('hidden');
   setTimeout(() => reticleEl.classList.add('hidden'), 2000);
 });

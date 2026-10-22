@@ -208,6 +208,51 @@ body.filter-cyber-hud::after {
   to { transform: rotate(0deg); }
 }
 
+/* 360° AR Car Radar Locator Pill (Points to car when you turn your camera away) */
+.ar-radar-pill {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 25;
+  background: rgba(7, 10, 18, 0.88);
+  border: 1.5px solid var(--accent-cyan);
+  box-shadow: 0 0 20px rgba(0, 243, 255, 0.5), inset 0 0 10px rgba(0, 243, 255, 0.2);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: opacity 0.25s ease;
+}
+
+.ar-radar-pill.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.85);
+}
+
+.radar-arrow {
+  color: var(--accent-cyan);
+  font-size: 15px;
+  display: inline-block;
+  text-shadow: 0 0 8px var(--accent-cyan);
+  line-height: 1;
+}
+
+.radar-text {
+  color: #fff;
+  white-space: nowrap;
+}
+
 /* ==========================================================================
    HUD Layout Architecture - Unobstructed Center View
    ========================================================================== */
